@@ -66,6 +66,17 @@ if distrib_type == 'rhel':
     base_sign_cmd = '/usr/bin/rpmsign --addsign'
 
 
+# IMA file signatures: only for modern rosa platforms whose name is "rosa"
+# followed by exactly two digits (rosa13, rosa14, rosa15, ...). Older
+# platforms (rosa2012.1, rosa2016.1, rosa2019.0, rosa2021.1, ...) and
+# non-rosa platforms are skipped. Currently enabled for distrib_type='dnf'
+# only (the rpmsign backend); rhel may be added later.
+ima_key_path = '/root/ima/ima-private.pem'
+if build_for_platform and re.match(r'^rosa\d{2}$', build_for_platform) \
+        and distrib_type == 'dnf':
+    base_sign_cmd += ' --signfiles --fskpath={}'.format(ima_key_path)
+
+
 if released == 'false':
     status = 'release'
 if released == 'true':
