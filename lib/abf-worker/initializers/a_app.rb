@@ -2,7 +2,7 @@ require 'resque'
 require 'yaml'
 require 'erb'
 
-Resque.redis = '192.168.1.2:6379'
+Resque.redis = '192.168.1.5:6379'
 Thread.abort_on_exception = true
 
 ROOT = File.dirname(__FILE__) + '/../../../'
