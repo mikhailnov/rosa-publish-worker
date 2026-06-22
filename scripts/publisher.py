@@ -70,8 +70,15 @@ if distrib_type == 'rhel':
 # non-rosa platforms are skipped. Currently enabled for distrib_type='dnf'
 # only (the rpmsign backend); rhel may be added later.
 ima_key_path = '/root/ima/ima-private.pem'
-if build_for_platform and re.match(r'^rosa\d{2}$', build_for_platform) \
-        and distrib_type == 'dnf':
+# IMA file signing targets public modern rosa platforms only (rosa13, rosa14,
+# ...). Require the platform in PLATFORM_PATH to be rosa\d{2} (negative
+# lookahead avoids matching "rosa20" inside legacy "rosa2021.1") and skip
+# personal repositories, whose path contains '_personal'.
+if (build_for_platform and re.match(r'^rosa\d{2}$', build_for_platform)
+        and distrib_type == 'dnf'
+        and repository_path
+        and '_personal' not in repository_path
+        and re.search(r'rosa\d{2}(?!\d)', repository_path)):
     base_sign_cmd += ' --signfiles --fskpath={}'.format(ima_key_path)
 
 
