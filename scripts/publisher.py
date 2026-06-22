@@ -38,8 +38,6 @@ testing = os.environ.get('TESTING')
 
 is_container = os.environ.get('IS_CONTAINER')
 regenerate_metadata = os.environ.get('REGENERATE_METADATA')
-# not need
-resign = os.environ.get('RESIGN')
 # main_folder="$repository_path"/"$arch"/"$repository_name"
 # arch = 'x86_64'
 # repository_path = repository_path + '/' + arch + '/' + repository_name
@@ -191,6 +189,24 @@ def sign_rpm(path):
                 print('signing rpm %s' % rpm)
                 cmd = base_sign_cmd + ' ' + rpm
                 mtime = os.path.getmtime(rpm)
+                # In the regenerate flow we re-sign existing packages that may
+                # already carry an identical GPG signature; then --addsign bails
+                # out with "already contains identical signature, skipping" and
+                # IMA file signatures never get added. Strip both first.
+                # --delsign and --delfilesign are separate rpmsign invocations:
+                # rpmsign refuses more than one major mode at once.
+                # dnf/rhel only; mdv uses rpm5.
+                if regenerate_metadata == 'true' and distrib_type in ('dnf', 'rhel'):
+                    for delsign_flag in ('--delsign', '--delfilesign'):
+                        delsign_cmd = '/usr/bin/rpmsign ' + delsign_flag + ' ' + rpm
+                        print('removing old signatures (%s) from %s' % (delsign_flag, rpm))
+                        try:
+                            subprocess.check_output(delsign_cmd.split(' '), stderr=subprocess.STDOUT)
+                        except subprocess.CalledProcessError as e:
+                            print('%s reported an issue for %s, continuing anyway' % (delsign_flag, rpm))
+                            if e.output:
+                                print(e.output)
+                        os.utime(rpm, (mtime, mtime))
                 output = subprocess.check_output(cmd.split(' '), stderr=subprocess.STDOUT)
                 os.utime(rpm, (mtime, mtime))
                 os.chmod(rpm, stat.S_IREAD | stat.S_IWRITE | stat.S_IRGRP | stat.S_IROTH)
